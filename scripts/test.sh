@@ -55,7 +55,7 @@ run_step() {
   fi
 }
 
-run_step "cargo test" cargo test -p "$crate" --locked
+run_step "cargo test" cargo test -p "$crate" --locked --no-fail-fast
 run_step "rustfmt" cargo fmt -p "$crate" -- --check
 run_step "clippy" cargo clippy -p "$crate" --all-targets --locked -- -D warnings
 

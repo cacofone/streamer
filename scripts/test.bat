@@ -50,7 +50,7 @@ set "FAILS=0"
 
 echo.
 echo == cargo test
-cargo test --manifest-path "%MANIFEST%" -p %CRATE% --locked
+cargo test --manifest-path "%MANIFEST%" -p %CRATE% --locked --no-fail-fast
 if errorlevel 1 (set /a FAILS+=1) else (set /a PASSES+=1)
 
 echo.

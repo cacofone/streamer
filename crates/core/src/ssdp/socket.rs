@@ -161,12 +161,27 @@ pub fn leave_group(socket: &UdpSocket, interface: Ipv4Addr) -> io::Result<()> {
 
 /// Receives one datagram and returns its bytes and the sender.
 ///
-/// A datagram larger than the accepted maximum comes back one byte over the
-/// limit (it is cut off), which [`super::message::parse`] reports as too large.
+/// A datagram larger than the accepted maximum is cut off. On Linux and macOS
+/// it comes back one byte over the limit, which [`super::message::parse`]
+/// reports as too large. Windows reports an error instead and discards the
+/// datagram; that case is turned into an [`io::ErrorKind::InvalidData`] error,
+/// which callers should treat as "skip this packet".
 pub async fn recv_datagram(socket: &UdpSocket) -> io::Result<(Vec<u8>, SocketAddr)> {
     let mut buffer = [0u8; RECV_BUFFER_SIZE];
-    let (length, from) = socket.recv_from(&mut buffer).await?;
-    Ok((buffer[..length].to_vec(), from))
+    match socket.recv_from(&mut buffer).await {
+        Ok((length, from)) => Ok((buffer[..length].to_vec(), from)),
+        Err(error) if is_message_too_long(&error) => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "datagram too large",
+        )),
+        Err(error) => Err(error),
+    }
+}
+
+/// Windows' `WSAEMSGSIZE`: the datagram did not fit the receive buffer.
+fn is_message_too_long(error: &io::Error) -> bool {
+    const WSAEMSGSIZE: i32 = 10040;
+    cfg!(windows) && error.raw_os_error() == Some(WSAEMSGSIZE)
 }
 
 fn into_tokio(socket: Socket) -> io::Result<UdpSocket> {
@@ -374,8 +389,15 @@ mod tests {
             )
             .await
             .unwrap();
-        let (data, _) = recv_datagram(&receiver).await.unwrap();
-        assert_eq!(data.len(), RECV_BUFFER_SIZE);
-        assert!(parse(&data).is_err());
+        let result = recv_datagram(&receiver).await;
+        if cfg!(windows) {
+            // Windows reports an error and drops the datagram
+            let error = result.expect_err("Windows reports oversized datagrams as an error");
+            assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+        } else {
+            let (data, _) = result.unwrap();
+            assert_eq!(data.len(), RECV_BUFFER_SIZE);
+            assert!(parse(&data).is_err());
+        }
     }
 }

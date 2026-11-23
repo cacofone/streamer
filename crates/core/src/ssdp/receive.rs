@@ -29,7 +29,8 @@ pub struct Received {
 /// - If `output` is full, the packet is dropped instead of waiting, so a slow
 ///   consumer can never stall the network side.
 /// - Errors that only say "an earlier packet of ours was unreachable" (which
-///   Windows reports on the receiving side of a UDP socket) are ignored.
+///   Windows reports on the receiving side of a UDP socket) are ignored, and
+///   so is an oversized datagram that Windows reports as an error.
 ///
 /// Returns `Ok(())` once `output` is closed, and an error for a failure of the
 /// socket itself. Stop the loop from outside by aborting the task or dropping it.
@@ -70,6 +71,7 @@ fn is_transient(error: &io::Error) -> bool {
         error.kind(),
         io::ErrorKind::ConnectionReset
             | io::ErrorKind::ConnectionRefused
+            | io::ErrorKind::InvalidData
             | io::ErrorKind::Interrupted
             | io::ErrorKind::WouldBlock
     )
