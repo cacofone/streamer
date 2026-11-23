@@ -50,12 +50,14 @@ pub fn multicast_target() -> SocketAddr {
 /// Lists the interfaces to use for discovery.
 ///
 /// Without a `filter`, this is every interface that is up and has an IPv4
-/// address, except loopback, link-local (`169.254.0.0/16`) and point-to-point
-/// ones (VPN tunnels rarely carry multicast). Each interface appears once.
+/// address, except loopback, link-local (`169.254.0.0/16`), point-to-point
+/// ones (VPN tunnels rarely carry multicast) and virtual interfaces of
+/// container and virtual machine hosts (see [`is_virtual_interface`]). Each
+/// interface appears once.
 ///
 /// With a `filter` (interface names or IPv4 addresses, case-insensitive) only
-/// matching interfaces are returned, and the loopback, link-local and
-/// point-to-point exclusions do not apply to them.
+/// matching interfaces are returned, and none of those exclusions apply to
+/// them, so a media server inside a virtual network can still be reached.
 ///
 /// The result may be empty, for example while a laptop is offline.
 pub fn list_interfaces(filter: Option<&[String]>) -> Result<Vec<NetworkInterface>, SsdpError> {
@@ -80,6 +82,35 @@ pub fn list_interfaces(filter: Option<&[String]>) -> Result<Vec<NetworkInterface
     Ok(select_interfaces(&candidates, filter))
 }
 
+/// Whether an interface name looks like a virtual network of a container or
+/// virtual machine host (Docker, Podman, Kubernetes, libvirt, LXC, VirtualBox,
+/// VMware, Hyper-V and WSL). Searching there is useless on a normal machine
+/// and only costs time. The check is by name and deliberately narrow, so that
+/// ordinary bridges such as `br0` are kept.
+pub fn is_virtual_interface(name: &str) -> bool {
+    const PREFIXES: [&str; 11] = [
+        "docker",
+        "veth",
+        "virbr",
+        "lxcbr",
+        "lxdbr",
+        "cni",
+        "flannel",
+        "podman",
+        "vboxnet",
+        "vmnet",
+        "vethernet",
+    ];
+    let lower = name.trim().to_ascii_lowercase();
+    if PREFIXES.iter().any(|prefix| lower.starts_with(prefix)) {
+        return true;
+    }
+    // Docker names its user-defined bridges "br-" followed by 12 hex digits.
+    lower
+        .strip_prefix("br-")
+        .is_some_and(|id| id.len() == 12 && id.chars().all(|c| c.is_ascii_hexdigit()))
+}
+
 fn select_interfaces(candidates: &[Candidate], filter: Option<&[String]>) -> Vec<NetworkInterface> {
     let mut chosen: Vec<NetworkInterface> = Vec::new();
     for candidate in candidates {
@@ -94,6 +125,7 @@ fn select_interfaces(candidates: &[Candidate], filter: Option<&[String]>) -> Vec
             None => {
                 !candidate.loopback
                     && !candidate.point_to_point
+                    && !is_virtual_interface(&candidate.name)
                     && !candidate.addr.is_link_local()
                     && !candidate.addr.is_unspecified()
             }
@@ -227,6 +259,67 @@ mod tests {
         let chosen = select_interfaces(&candidates, None);
         assert_eq!(names(&chosen), ["eth0", "wlan0"]);
         assert_eq!(chosen[0].addr, Ipv4Addr::new(192, 0, 2, 10));
+    }
+
+    #[test]
+    fn virtual_interfaces_are_recognized_by_name() {
+        for name in [
+            "docker0",
+            "docker_gwbridge",
+            "br-467aaccf6dbf",
+            "BR-467AACCF6DBF",
+            "veth1a2b3c",
+            "virbr0",
+            "lxcbr0",
+            "lxdbr0",
+            "cni0",
+            "cni-podman0",
+            "flannel.1",
+            "podman0",
+            "vboxnet0",
+            "vmnet8",
+            "vEthernet (WSL)",
+            "vEthernet (Default Switch)",
+        ] {
+            assert!(is_virtual_interface(name), "{name} should be virtual");
+        }
+        for name in [
+            "eth0",
+            "eth0.100",
+            "wlp3s0",
+            "enp5s0",
+            "en0",
+            "br0",
+            "br-lan",
+            "br-467aaccf6db", // 11 digits: not a Docker id
+            "br-467aaccf6dbfx",
+            "Wi-Fi",
+            "Ethernet",
+            "Ethernet 2",
+            "bond0",
+            "",
+        ] {
+            assert!(!is_virtual_interface(name), "{name} should be a real one");
+        }
+    }
+
+    #[test]
+    fn default_selection_skips_virtual_interfaces_but_a_filter_allows_them() {
+        let candidates = [
+            candidate("wlp3s0", [192, 168, 0, 121]),
+            candidate("docker0", [172, 17, 0, 1]),
+            candidate("br-467aaccf6dbf", [172, 19, 0, 1]),
+            candidate("br0", [10, 0, 0, 2]),
+        ];
+        assert_eq!(
+            names(&select_interfaces(&candidates, None)),
+            ["wlp3s0", "br0"]
+        );
+
+        let chosen = select_interfaces(&candidates, Some(&["docker0".to_string()]));
+        assert_eq!(names(&chosen), ["docker0"]);
+        let chosen = select_interfaces(&candidates, Some(&["172.19.0.1".to_string()]));
+        assert_eq!(names(&chosen), ["br-467aaccf6dbf"]);
     }
 
     #[test]

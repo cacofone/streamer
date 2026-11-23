@@ -30,6 +30,8 @@ streamer discover --type renderer --interface wlp3s0 --timeout 10
 
 Options: `--timeout <secs>`, `--type server|renderer|all` (repeatable; `all` lists every UPnP device, for diagnostics), `--interface <name-or-ip>` (repeatable), `--json`, `--watch`. Logs go to stderr (`-v`, `-vv`), so stdout stays clean for scripts.
 
+More about how discovery works, troubleshooting and the manual test checklist: [docs/discovery.md](docs/discovery.md).
+
 ## Install from source
 
 ```sh

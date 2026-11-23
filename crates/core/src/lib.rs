@@ -3,6 +3,7 @@
 //! Every front end (CLI, TUI and the native apps) talks to this crate.
 
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
 pub mod ssdp;
 
