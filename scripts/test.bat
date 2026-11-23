@@ -1,6 +1,6 @@
 @echo off
 rem Test one crate, and smoke-test its binary.
-rem Usage: test.bat <crate> <binary or -> [--installed] [--prefix DIR]
+rem Usage: test.bat <crate> <binary or -> [--installed] [--live] [--prefix DIR]
 setlocal EnableExtensions
 
 for %%I in ("%~dp0..") do set "ROOT=%%~fI"
@@ -14,11 +14,13 @@ shift /1
 shift /1
 
 set "INSTALLED=0"
+set "LIVE=0"
 set "PREFIX_DIR="
 
 :parse
 if "%~1"=="" goto parsed
 if /i "%~1"=="--installed" goto opt_installed
+if /i "%~1"=="--live" goto opt_live
 if /i "%~1"=="--prefix" goto opt_prefix
 if /i "%~1"=="-h" goto usage_ok
 if /i "%~1"=="--help" goto usage_ok
@@ -27,6 +29,11 @@ exit /b 2
 
 :opt_installed
 set "INSTALLED=1"
+shift /1
+goto parse
+
+:opt_live
+set "LIVE=1"
 shift /1
 goto parse
 
@@ -42,6 +49,12 @@ echo error: --prefix needs a value 1>&2
 exit /b 2
 
 :parsed
+if "%LIVE%"=="0" goto live_checked
+if /i "%BINARY%"=="streamer" goto live_checked
+echo error: --live is only available for the streamer binary 1>&2
+exit /b 2
+
+:live_checked
 set "MANIFEST=%ROOT%\Cargo.toml"
 set "TARGET_DIR=%ROOT%\target"
 if defined CARGO_TARGET_DIR set "TARGET_DIR=%CARGO_TARGET_DIR%"
@@ -124,11 +137,63 @@ echo == smoke: --help
 if errorlevel 1 goto help_failed
 set /a PASSES+=1
 echo PASS: smoke --help
-goto summary
+goto discover_smoke
 
 :help_failed
 set /a FAILS+=1
 echo FAIL: smoke --help
+
+:discover_smoke
+if /i not "%BINARY%"=="streamer" goto summary
+
+echo.
+echo == smoke: discover --help
+"%BINPATH%" discover --help >nul
+if errorlevel 1 goto dhelp_failed
+set /a PASSES+=1
+echo PASS: smoke discover --help
+goto discover_json
+
+:dhelp_failed
+set /a FAILS+=1
+echo FAIL: smoke discover --help
+
+:discover_json
+echo.
+echo == smoke: discover --timeout 2 --json
+rem Must work with no devices and no multicast: it just finds nothing.
+rem stdout must hold nothing but JSON lines (each line starts with { and ends with }).
+set "JSON_OUT=%TEMP%\cacofone-discover-%RANDOM%.txt"
+"%BINPATH%" discover --timeout 2 --json > "%JSON_OUT%" 2>nul
+if errorlevel 1 goto djson_failed
+findstr /v /r "^{.*}$" "%JSON_OUT%" >nul
+if not errorlevel 1 goto djson_failed
+del /Q "%JSON_OUT%" 2>nul
+set /a PASSES+=1
+echo PASS: smoke discover --json
+goto live
+
+:djson_failed
+del /Q "%JSON_OUT%" 2>nul
+set /a FAILS+=1
+echo FAIL: smoke discover --json
+
+:live
+if not "%LIVE%"=="1" goto summary
+echo.
+echo == live: discover on the real network
+"%BINPATH%" discover --timeout 5
+echo.
+set "ANSWER="
+set /p "ANSWER=Are the devices you expected listed above? [y/N] "
+if /i "%ANSWER:~0,1%"=="y" goto live_ok
+set /a FAILS+=1
+echo FAIL: live discover
+goto summary
+
+:live_ok
+set /a PASSES+=1
+echo PASS: live discover
 
 :summary
 echo.
@@ -153,5 +218,7 @@ echo.
 echo Options:
 echo   --installed    smoke-test the installed binary instead of a fresh build
 echo   --prefix DIR   where to look for the installed binary (default: search PATH)
+echo   --live         also run a real search on your network and ask you to confirm
+echo                  the result (only for the streamer binary, never run in CI)
 echo   -h, --help     show this help
 exit /b 0

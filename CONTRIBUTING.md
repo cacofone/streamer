@@ -32,6 +32,8 @@ mise run uninstall-cli      # removes it again (also: uninstall-tui)
 
 Pass options after `--`, for example `mise run install-cli -- --prefix /opt/streamer --dry-run`. Without mise, run the script for your platform directly, for example `crates/cli/bin/install.sh` or `crates\cli\bin\install.bat`.
 
+`mise run test-cli -- --live` additionally runs a real `streamer discover` on your network and asks you to confirm that your devices show up. It is for manual checks and never runs in CI.
+
 The default install location is `~/.local/bin` on macOS and Linux and `%LOCALAPPDATA%\Programs\cacofone-streamer\bin` on Windows. The scripts never change your `PATH`. They only remove binaries that they installed themselves.
 
 The shared implementation is in `scripts/`; the folders `crates/*/bin/` hold thin wrappers per crate. Keep each `.sh` and its `.bat` twin behaving the same. `.bat` files must keep CRLF line endings (`.gitattributes` takes care of this).

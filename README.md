@@ -19,6 +19,17 @@ One Rust core, many front ends.
 
 The native apps use the core through bindings, which are not set up yet.
 
+## Usage
+
+```sh
+streamer discover                 # search for 5 seconds, print a table of servers and renderers
+streamer discover --json          # one JSON object per line, for scripts
+streamer discover --watch         # keep running, print devices as they appear and disappear
+streamer discover --type renderer --interface wlp3s0 --timeout 10
+```
+
+Options: `--timeout <secs>`, `--type server|renderer|all` (repeatable; `all` lists every UPnP device, for diagnostics), `--interface <name-or-ip>` (repeatable), `--json`, `--watch`. Logs go to stderr (`-v`, `-vv`), so stdout stays clean for scripts.
+
 ## Install from source
 
 ```sh

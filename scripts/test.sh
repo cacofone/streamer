@@ -12,6 +12,8 @@ binary it also checks that the binary runs. Use "-" for a library crate.
 Options:
   --installed    smoke-test the installed binary instead of a fresh build
   --prefix DIR   where to look for the installed binary (default: search PATH)
+  --live         also run a real search on your network and ask you to confirm
+                 the result (only for the streamer binary, never run in CI)
   -h, --help     show this help
 USAGE
 }
@@ -25,15 +27,21 @@ binary=$2
 shift 2
 
 installed=0
+live=0
 prefix=
 while [ $# -gt 0 ]; do
   case "$1" in
     --installed) installed=1; shift ;;
+    --live) live=1; shift ;;
     --prefix) [ $# -ge 2 ] || die "--prefix needs a value"; prefix=$2; shift 2 ;;
     -h | --help) usage; exit 0 ;;
     *) die "unknown option: $1" ;;
   esac
 done
+
+if [ "$live" -eq 1 ] && [ "$binary" != "streamer" ]; then
+  die "--live is only available for the streamer binary"
+fi
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
@@ -91,6 +99,37 @@ if [ "$binary" != "-" ]; then
 
   run_step "smoke: --version" smoke_version
   run_step "smoke: --help" smoke_help
+
+  if [ "$binary" = "streamer" ]; then
+    smoke_discover_help() { "$binpath" discover --help > /dev/null; }
+    # Must work with no devices and no multicast: it just finds nothing.
+    # stdout must hold nothing but JSON lines.
+    smoke_discover_json() {
+      local out
+      out=$("$binpath" discover --timeout 2 --json 2> /dev/null) || return 1
+      [ -n "$out" ] || return 0
+      if command -v jq > /dev/null 2>&1; then
+        printf '%s\n' "$out" | jq . > /dev/null
+      elif command -v python3 > /dev/null 2>&1; then
+        printf '%s\n' "$out" | python3 -c 'import sys, json; [json.loads(l) for l in sys.stdin if l.strip()]'
+      else
+        echo "notice: neither jq nor python3 found, skipping JSON validation"
+      fi
+    }
+    run_step "smoke: discover --help" smoke_discover_help
+    run_step "smoke: discover --timeout 2 --json" smoke_discover_json
+
+    if [ "$live" -eq 1 ]; then
+      live_check() {
+        "$binpath" discover --timeout 5 || return 1
+        printf '\nAre the devices you expected listed above? [y/N] '
+        local answer=n
+        read -r answer || answer=n
+        case $answer in [yY]*) return 0 ;; *) return 1 ;; esac
+      }
+      run_step "live: discover on the real network" live_check
+    fi
+  fi
 fi
 
 echo
