@@ -19,6 +19,15 @@ One Rust core, many front ends.
 
 The native apps use the core through bindings, which are not set up yet.
 
+## Install from source
+
+```sh
+mise run install-cli     # installs `streamer` to ~/.local/bin (Windows: %LOCALAPPDATA%\Programs\cacofone-streamer\bin)
+mise run install-tui     # installs `streamer-tui`
+```
+
+Without mise, run `crates/cli/bin/install.sh` (macOS, Linux) or `crates\cli\bin\install.bat` (Windows). See [CONTRIBUTING.md](CONTRIBUTING.md) for the test and uninstall scripts.
+
 ## Build
 
 ```sh

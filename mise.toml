@@ -32,3 +32,41 @@ run = "cargo run -p cacofone-streamer-cli --"
 [tasks.tui]
 description = "Run the TUI"
 run = "cargo run -p cacofone-streamer-tui --"
+
+# Local install and test scripts. macOS and Linux run the .sh scripts, Windows the .bat scripts.
+# Pass options after `--`, for example: mise run install-cli -- --prefix /opt/streamer
+
+[tasks.install-cli]
+description = "Build and install the CLI locally"
+run = "bash crates/cli/bin/install.sh"
+run_windows = "crates\\cli\\bin\\install.bat"
+
+[tasks.uninstall-cli]
+description = "Remove the locally installed CLI"
+run = "bash crates/cli/bin/uninstall.sh"
+run_windows = "crates\\cli\\bin\\uninstall.bat"
+
+[tasks.test-cli]
+description = "Test the CLI and smoke-test its binary"
+run = "bash crates/cli/bin/test.sh"
+run_windows = "crates\\cli\\bin\\test.bat"
+
+[tasks.install-tui]
+description = "Build and install the TUI locally"
+run = "bash crates/tui/bin/install.sh"
+run_windows = "crates\\tui\\bin\\install.bat"
+
+[tasks.uninstall-tui]
+description = "Remove the locally installed TUI"
+run = "bash crates/tui/bin/uninstall.sh"
+run_windows = "crates\\tui\\bin\\uninstall.bat"
+
+[tasks.test-tui]
+description = "Test the TUI and smoke-test its binary"
+run = "bash crates/tui/bin/test.sh"
+run_windows = "crates\\tui\\bin\\test.bat"
+
+[tasks.test-core]
+description = "Test the core library"
+run = "bash crates/core/bin/test.sh"
+run_windows = "crates\\core\\bin\\test.bat"

@@ -49,3 +49,73 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: EmbarkStudios/cargo-deny-action@v2
+
+  scripts:
+    name: scripts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: shellcheck
+        if: runner.os == 'Linux'
+        run: shellcheck scripts/*.sh crates/*/bin/*.sh
+
+      - name: Test scripts (macOS and Linux)
+        if: runner.os != 'Windows'
+        run: |
+          crates/core/bin/test.sh
+          crates/cli/bin/test.sh
+          crates/tui/bin/test.sh
+
+      - name: Install, test the installed binaries, uninstall (macOS and Linux)
+        if: runner.os != 'Windows'
+        run: |
+          prefix="$RUNNER_TEMP/prefix"
+          crates/cli/bin/install.sh --prefix "$prefix"
+          crates/tui/bin/install.sh --prefix "$prefix"
+          crates/cli/bin/test.sh --installed --prefix "$prefix"
+          crates/tui/bin/test.sh --installed --prefix "$prefix"
+          crates/cli/bin/uninstall.sh --prefix "$prefix"
+          crates/tui/bin/uninstall.sh --prefix "$prefix"
+          test ! -e "$prefix/bin/streamer"
+          test ! -e "$prefix/bin/streamer-tui"
+
+      - name: Test scripts (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          call crates\core\bin\test.bat
+          if errorlevel 1 exit /b 1
+          call crates\cli\bin\test.bat
+          if errorlevel 1 exit /b 1
+          call crates\tui\bin\test.bat
+          if errorlevel 1 exit /b 1
+
+      - name: Install, test the installed binaries, uninstall (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          set "PREFIX_DIR=%RUNNER_TEMP%\prefix"
+          call crates\cli\bin\install.bat --prefix "%PREFIX_DIR%"
+          if errorlevel 1 exit /b 1
+          call crates\tui\bin\install.bat --prefix "%PREFIX_DIR%"
+          if errorlevel 1 exit /b 1
+          call crates\cli\bin\test.bat --installed --prefix "%PREFIX_DIR%"
+          if errorlevel 1 exit /b 1
+          call crates\tui\bin\test.bat --installed --prefix "%PREFIX_DIR%"
+          if errorlevel 1 exit /b 1
+          call crates\cli\bin\uninstall.bat --prefix "%PREFIX_DIR%"
+          if errorlevel 1 exit /b 1
+          call crates\tui\bin\uninstall.bat --prefix "%PREFIX_DIR%"
+          if errorlevel 1 exit /b 1
+          if exist "%PREFIX_DIR%\bin\streamer.exe" exit /b 1
+          if exist "%PREFIX_DIR%\bin\streamer-tui.exe" exit /b 1
