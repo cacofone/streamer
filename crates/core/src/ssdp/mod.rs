@@ -4,6 +4,7 @@
 //! lives. Fetching that description and talking to the device is a separate step.
 
 pub mod cache;
+pub mod discovery;
 pub mod error;
 pub mod listener;
 pub mod message;
@@ -13,5 +14,6 @@ pub mod socket;
 pub mod types;
 
 pub use cache::DeviceCache;
+pub use discovery::{Discovery, discover_once};
 pub use error::SsdpError;
 pub use types::{Device, DeviceKind, DiscoveryConfig, DiscoveryEvent, SearchTarget};
