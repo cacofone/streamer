@@ -26,8 +26,6 @@ allow = [
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
-# Path dependencies inside the workspace have no version requirement
-allow-wildcard-paths = true
 
 [sources]
 unknown-registry = "deny"
