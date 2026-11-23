@@ -1,0 +1,16 @@
+[package]
+name = "cacofone-streamer-tui"
+description = "Terminal UI for Cacofone Streamer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[[bin]]
+name = "streamer-tui"
+path = "src/main.rs"
+
+[dependencies]
+cacofone-streamer-core.workspace = true
