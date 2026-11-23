@@ -6,6 +6,7 @@
 pub mod cache;
 pub mod error;
 pub mod message;
+pub mod socket;
 pub mod types;
 
 pub use cache::DeviceCache;
