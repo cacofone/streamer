@@ -1,0 +1,8 @@
+# Keep LF line endings on every platform (rustfmt uses newline_style = "Unix")
+* text=auto eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
