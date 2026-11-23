@@ -2,6 +2,10 @@
 //!
 //! Every front end (CLI, TUI and the native apps) talks to this crate.
 
+#![forbid(unsafe_code)]
+
+pub mod ssdp;
+
 /// Version of the core, as set in the workspace manifest.
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")

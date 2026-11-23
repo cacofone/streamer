@@ -25,3 +25,6 @@ xcuserdata/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local notes and specs, not published
+backup/

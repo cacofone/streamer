@@ -1,0 +1,9 @@
+NOTIFY * HTTP/1.1
+HOST: 239.255.255.250:1900
+CACHE-CONTROL: max-age=900
+LOCATION: http://192.0.2.30:8200/rootDesc.xml
+NT: urn:schemas-upnp-org:device:MediaServer:1
+NTS: ssdp:alive
+SERVER: Linux/5.10 DLNADOC/1.50 UPnP/1.0 ExampleServer/1.0
+USN: uuid:00000000-0000-4000-8000-000000000002::urn:schemas-upnp-org:device:MediaServer:1
+

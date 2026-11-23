@@ -1,0 +1,8 @@
+HTTP/1.1 200 OK
+cache-control:   public, max-age = 120 , must-revalidate
+Location:    http://192.0.2.40:5000/desc.xml   
+st: upnp:rootdevice
+LOCATION: http://192.0.2.99:1/ignored.xml
+UsN:   UUID:ABCDEF-1234::upnp:rootdevice
+no colon on this line
+
